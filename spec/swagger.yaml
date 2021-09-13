@@ -4,8 +4,6 @@ info:
     ## API Hakkında
 
     - Dökümantasyon oluşturulmasında ise OpenAPI-Swagger 2.0 kullandık.
-
-
     - API hizmetimizin `BASE_URL`i `http://abone.parasut.com/` şeklindedir.
     
     - V1 endpointlerine ulaşmak için `http://abone.parasut.com/v1` şeklinde
