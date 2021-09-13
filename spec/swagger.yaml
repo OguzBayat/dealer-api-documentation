@@ -1,0 +1,1131 @@
+swagger: '2.0'
+info:
+  description: > 
+    ## API Hakkında
+
+    - Dökümantasyon oluşturulmasında ise OpenAPI-Swagger 2.0 kullandık.
+    - API hizmetimizin `BASE_URL`i `http://abone.parasut.com/` şeklindedir.
+    
+    - V1 endpointlerine ulaşmak için `http://abone.parasut.com/v1` şeklinde
+    kullanabilirsiniz.
+    
+    - Sandbox ortamı için `http://abone-test.parasut.com/v1` URL ini kullanabilirsiniz
+
+    ## Genel Bilgiler
+
+    - API methodlarına erişmek için iki baz URL bulunuyor.
+    
+      - Bunlardan bir tanesi `Ana Bayi` isteklerinin gönderileceği `http://abone.parasut.com/v1/ana_bayi_no`
+      
+      - Diğeri ise `Alt Bayi` isteklerinin gönderileceği `http://abone.parasut.com/v1/ana_bayi_no/alt_bayi_no`
+      
+      - Örneğin 128 numaralı ana bayiye bağlı alt bayilerin listesine erişmek için `http://abone.parasut.com/v1/128/sub_dealers` adresi kullanılır.
+      
+      - Örneğin 128 numaralı ana bayiye bağlı 170 numaralı alt bayinin satış yapmak için veya satış yaptığı şirketlerin listesine ulaşmak için `http://abone.parasut.com/v1/128/170/companies` adresi kullanılır.
+      
+      - Eğer tek bir bayi üzerinden sistemi kurgulayacaksanız; ana bayi sisteme tanımlandıktan size verdiğimiz `api_key` üzerinden alt bayiyi de aynı bilgiler ile oluşturmanız ve istekleri yaparken ana ve alt bayinin id lerini birlikte yollamanız gerekmektedir
+
+
+    - İstekleri gönderirken `Ana Bayi` ye bağlı işlemleri yaparken ana bayiye ait `api_key`,`Alt Bayi` ye bağlı işlemleri yaparken alt bayiye ait `api_key` değerini, `Authorization`  header'ı olarak api_key şeklinde api_key anahtarında yollamanız gerekmektedir.
+    
+    - Yeni bir kayıt oluştururken ilgili kaydın ID parametresini boş göndermeli veya hiç göndermemelisiniz.
+  version: 1.0.0
+  title: Paraşüt Dealer API
+
+# tags are used for organizing operations
+x-tagGroups:
+  - name: Ana Bayi İşlemleri
+    tags:
+      - Alt Bayi
+  - name: Alt Bayi İşlemleri
+    tags:
+      - Leads
+      - Şirket
+  - name: Üyelik İşlemleri
+    tags:
+      - Ürün
+      - Paket
+
+paths:
+  /{main_dealer_id}/sub_dealers:
+    get:
+      tags:
+      - Alt Bayi
+      summary: Index
+      operationId: listSubDealers
+      description: |
+        Ana bayi olarak size bağlı olan tüm alt bayileri listeleyebilirsiniz
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - in: query
+        name: page[number]
+        description: pagination yakında eklenecek
+        type: integer
+        format: int32
+        default: 1
+      - in: query
+        name: page[size]
+        description: page size yakında eklenecek
+        type: integer
+        format: int32
+        default: 15
+      - in: query
+        name: sort
+        description: sorting yakında eklenecek
+        type: string
+        format: string
+        default: "id"
+      responses:
+        200:
+          description: Alt Bayiler
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Dealer'
+              meta:
+                $ref: ''
+        400:
+          description: bad input parameter
+    post:
+      tags:
+      - Alt Bayi
+      summary: Create
+      operationId: createSubDealers
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_form
+        schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - sub_delaers
+                  attributes:
+                    $ref: '#/definitions/SubDealerCreateItem'
+                  relationships:
+                    type: object
+                    properties:
+                      plans:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                maxLength: 255
+                              type:
+                                type: string
+                                maxLength: 255
+                                description: Type of the resource
+                                enum:
+                                  - plans
+                      products:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                maxLength: 255
+                              type:
+                                type: string
+                                maxLength: 255
+                                description: Type of the resource
+                                enum:
+                                  - products
+        in: body
+        required: true
+      responses:
+        201:
+          description: Alt Bayi
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/DealerItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/sub_dealers/{sub_dealer_id}:
+    get:
+      tags:
+      - Alt Bayi
+      summary: Show
+      operationId: showSubDealer
+      description: |
+        By passing in the appropriate options, you can search for
+        available inventory in the system
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Alt Bayi
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Dealer'
+        400:
+          description: bad input parameter
+    put:
+      tags:
+      - Alt Bayi
+      summary: Edit
+      operationId: updateSubDealers
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_form
+        schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - sub_delaers
+                  attributes:
+                    $ref: '#/definitions/SubDealerCreateItem'
+                  relationships:
+                    type: object
+                    properties:
+                      plans:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                maxLength: 255
+                              type:
+                                type: string
+                                maxLength: 255
+                                description: Type of the resource
+                                enum:
+                                  - plans
+                      products:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                maxLength: 255
+                              type:
+                                type: string
+                                maxLength: 255
+                                description: Type of the resource
+                                enum:
+                                  - products
+        in: body
+        required: true
+      responses:
+        200:
+          description: Alt Bayi
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/DealerItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/dealer_leads:
+    get:
+      tags:
+      - Leads
+      summary: Index
+      operationId: listDealerLeads
+      description: |
+        Davet ettiğiniz tüm müşterilerinizi listeleyebilirsiniz
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      - in: query
+        name: page[number]
+        description: pagination yakında eklenecek
+        type: integer
+        format: int32
+        default: 1
+      - in: query
+        name: page[size]
+        description: page size yakında eklenecek
+        type: integer
+        format: int32
+        default: 15
+      - in: query
+        name: sort
+        description: sorting yakında eklenecek
+        type: string
+        format: string
+        default: "id"
+      responses:
+        200:
+          description: Leads
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/DealerLead'
+              meta:
+                $ref: ''
+        400:
+          description: bad input parameter
+    post:
+      tags:
+      - Leads
+      summary: Create
+      operationId: createDealerLeads
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      - name: dealer_lead_form
+        schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - dealer_leads
+                  attributes:
+                    $ref: '#/definitions/DealerLeadCreateItem'
+                  relationships:
+                    type: object
+                    properties:
+                      plans:
+                        type: object
+                        properties:
+                          data:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                maxLength: 255
+                              type:
+                                type: string
+                                maxLength: 255
+                                description: Type of the resource
+                                enum:
+                                  - plans
+        in: body
+        required: true
+      responses:
+        201:
+          description: Lead
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/DealerLeadItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/dealer_leads/{id}:
+    get:
+      tags:
+      - Leads
+      summary: Show
+      operationId: showDealerLead
+      description: |
+        asdasdasdasdas
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Lead ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Alt Bayi
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/DealerLead'
+        400:
+          description: bad input parameter
+  /{main_dealer_id}/{sub_dealer_id}/dealer_leads/{id}/resend_invitation:
+    patch:
+      tags:
+      - Leads
+      summary: Resend
+      operationId: resendDealerLeadInvitation
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Lead ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Lead
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/DealerLeadItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/companies:
+    get:
+      tags:
+      - Şirket
+      summary: Index
+      operationId: listCompanies
+      description: |
+        By passing in the appropriate options, you can search for
+        available inventory in the system
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      - in: query
+        name: page[number]
+        description: pagination yakında eklenecek
+        type: integer
+        format: int32
+        default: 1
+      - in: query
+        name: page[size]
+        description: page size yakında eklenecek
+        type: integer
+        format: int32
+        default: 15
+      - in: query
+        name: sort
+        description: sorting yakında eklenecek
+        type: string
+        format: string
+        default: "id"
+      responses:
+        200:
+          description: Şirketler
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Company'
+        400:
+          description: bad input parameter
+  /{main_dealer_id}/{sub_dealer_id}/companies/{id}:
+    get:
+      tags:
+      - Şirket
+      summary: Show
+      operationId: showCompany
+      description: |
+        asdasdasdasdas
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Şirket ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Şirket
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Company'
+        400:
+          description: bad input parameter
+  /{main_dealer_id}/{sub_dealer_id}/companies/{id}/sales:
+    patch:
+      tags:
+      - Şirket
+      summary: Satış
+      operationId: sales
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Şirket ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Şirket
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/CompanyItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/companies/{id}/refunds:
+    patch:
+      tags:
+      - Şirket
+      summary: İade
+      operationId: refunds
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Şirket ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Şirket
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/CompanyItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/refunds:
+    put:
+      tags:
+      - Şirket
+      summary: İade(email)
+      operationId: refunds_with_email
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      - name: company_form
+        schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - companies
+                  attributes:
+                    $ref: '#/definitions/CompanyUpdateWithEmail'
+        in: body
+        required: true
+      responses:
+        200:
+          description: Şirket
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/CompanyItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /{main_dealer_id}/{sub_dealer_id}/companies/{id}/disable_e_invoice_integrations:
+    patch:
+      tags:
+      - Şirket
+      summary: E-hizmet İptal
+      operationId: disableEInvoice
+      description: Adds an item to the system
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: id
+        type: integer
+        description: Şirket ID
+        in: path
+        required: true
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      - name: sub_dealer_id
+        type: integer
+        description: Alt Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Şirket
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/definitions/CompanyItem'
+        400:
+          description: invalid input, object invalid
+        409:
+          description: an existing item already exists
+  /products:
+    get:
+      tags:
+      - Ürün
+      summary: Index
+      operationId: listProducts
+      description: |
+        Satabileceğiniz ürünleri listeleyebilirisiniz
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Alt Bayiler
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Product'
+              meta:
+                $ref: ''
+        400:
+          description: bad input parameter
+  /plans:
+    get:
+      tags:
+      - Paket
+      summary: Index
+      operationId: listPlans
+      description: |
+        Satabileceğiniz paketleri listeleyebilirisiniz
+      produces:
+      - application/json
+      parameters:
+      - name: main_dealer_id
+        type: integer
+        description: Ana Bayi ID
+        in: path
+        required: true
+      responses:
+        200:
+          description: Alt Bayiler
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/definitions/Plan'
+              meta:
+                $ref: ''
+        400:
+          description: bad input parameter
+definitions:
+  SubDealerCreateItem:
+    type: object
+    required:
+    - is_company
+    - officer_name
+    - legal_name
+    - email
+    - tax_number
+    - tax_office
+    - address
+    - city
+    - district
+
+    properties:
+      is_company:
+        type: boolean
+      officer_name:
+        type: string
+      legal_name:
+        type: string
+      email:
+        type: string
+      tax_number:
+        type: string
+      tax_office:
+        type: string
+      address:
+        type: string
+      city:
+        type: string
+      district:
+        type: string
+  Dealer:
+    type: object
+    properties:
+      id:
+        type: string
+        maxLength: 255
+      type:
+        type: string
+        maxLength: 255
+        description: Type of the resource
+        enum:
+          - sub_dealers
+      attributes:
+        $ref: '#/definitions/DealerItem'
+      relationships:
+        type: object
+        properties:
+          plan:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - plans
+          product:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - products
+    required:
+      - attributes
+  DealerItem:
+    type: object
+    properties:
+      officer_name:
+        type: string
+      legal_name:
+        type: string
+      tax_number:
+        type: string
+      status:
+        example: active || inactive
+        type: string
+      sales_model:
+        example: reseller || bundle || partner
+        type: string
+  DealerLeadCreateItem:
+    type: object
+    required:
+    - lead_email
+    - subscription_type
+
+    properties:
+      lead_email:
+        type: string
+      subscription_type:
+        type: string
+        enum:
+          - in_trial 
+          - subscription
+  DealerLead:
+    type: object
+    properties:
+      id:
+        type: string
+        maxLength: 255
+      type:
+        type: string
+        maxLength: 255
+        description: Type of the resource
+        enum:
+          - dealer_leads
+      attributes:
+        $ref: '#/definitions/DealerLeadItem'
+      relationships:
+        type: object
+        properties:
+          plan:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    maxLength: 255
+                  type:
+                    type: string
+                    maxLength: 255
+                    description: Type of the resource
+                    enum:
+                      - plans
+    required:
+      - attributes
+  DealerLeadItem:
+    type: object
+    required:
+    - plan_id
+    - lead_email
+    - subscription_type
+    properties:
+      company_id:
+        type: string
+      lead_email:
+        type: string
+      subscription_type:
+        type: string
+        example: in_trial || subscription
+      status:
+        type: string
+        example: invited
+  CompanyUpdateWithEmail:
+    type: object
+    required:
+    - email
+    properties:
+      email:
+        type: string
+  Company:
+    type: object
+    properties:
+      id:
+        type: string
+        maxLength: 255
+      type:
+        type: string
+        maxLength: 255
+        description: Type of the resource
+        enum:
+          - companies
+      attributes:
+        $ref: '#/definitions/CompanyItem'
+    required:
+      - attributes
+  CompanyItem:
+    type: object
+    required:
+    - owner_id
+    - name
+    - legal_name
+    - tax_number
+    - tax_office
+    - campaign
+    - credit_balance
+    - selected_plan_id
+    - subscription_status
+    - pricing_list
+    - trial_period
+    - prst_contact_id
+    - owner_email
+    - e_invoicing_enabled
+    - app_type
+    properties:
+      owner_id:
+        type: string
+      name:
+        type: string
+      legal_name:
+        type: string
+      tax_number:
+        type: string
+      tax_office:
+        type: string
+      valid_until:
+        type: string
+        format: date
+        readOnly: true
+      campaign:
+        type: string
+      credit_balance:
+        type: integer
+      selected_plan_id:
+        type: string
+      subscription_status:
+        type: string
+      pricing_list:
+        type: string
+      trial_period:
+        type: string
+      prst_contact_id:
+        type: string
+      owner_email:
+        type: string
+      e_invoicing_enabled:
+        type: string
+      app_type:
+        type: string
+  Plan:
+    type: object
+    properties:
+      id:
+        type: string
+        maxLength: 255
+      type:
+        type: string
+        maxLength: 255
+        description: Type of the resource
+        enum:
+          - plans
+      attributes:
+        $ref: '#/definitions/PlanItem'
+    required:
+      - attributes
+  PlanItem:
+    type: object
+    required:
+    - id
+    properties:
+      id:
+        type: integer
+        example: 15
+      name:
+        type: string
+      price:
+        type: string
+      dealer_sales_model:
+        type: string
+        example: bundle || reseller || partner
+      can_change_selected_plan:
+        type: boolean
+      status:
+        type: string
+  Product:
+    type: object
+    properties:
+      id:
+        type: string
+        maxLength: 255
+      type:
+        type: string
+        maxLength: 255
+        description: Type of the resource
+        enum:
+          - plans
+      attributes:
+        $ref: '#/definitions/ProductItem'
+  ProductItem:
+    type: object
+    required:
+    - id
+    properties:
+      id:
+        type: integer
+        example: 15
+      name:
+        type: string
+      owner:
+        type: string
+      status:
+        type: string
+        example: active || passive
+host: abone.parasut.com
+basePath: /v1
+schemes:
+ - https
